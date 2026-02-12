@@ -1,0 +1,33 @@
+name: 24-7 Hourly Hunter
+on:
+  schedule:
+    # This runs every hour at minute 5, between 13:00 and 23:00 UTC
+    # (8 AM - 6 PM Baltimore Time)
+    - cron: '5 13-23 * * *'
+  workflow_dispatch: # Allows you to trigger it manually anytime
+
+jobs:
+  hunt:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+      - name: Run Job Agent
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
+        run: python hunter.py
+      - name: Commit New Jobs
+        run: |
+          git config --global user.name "AI-Hunter-Bot"
+          git config --global user.email "bot@github.com"
+          git add jobs.json
+          git commit -m "Auto-update: New Jobs Found $(date)" || exit 0
+          git push
