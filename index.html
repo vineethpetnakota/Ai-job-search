@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><title>Data Job Feed</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white p-10">
+    <div class="max-w-3xl mx-auto">
+        <h1 class="text-3xl font-bold text-indigo-400 mb-6">Live Data & BI Feed</h1>
+        <div id="list" class="space-y-4">Loading jobs...</div>
+    </div>
+    <script>
+        fetch('jobs.json').then(r => r.json()).then(data => {
+            document.getElementById('list').innerHTML = data.map(j => `
+                <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-xl font-bold">${j.title}</h2>
+                        <p class="text-indigo-300">${j.company} • <span class="text-green-400">${j.score}% Match</span></p>
+                    </div>
+                    <a href="${j.url}" target="_blank" class="bg-indigo-600 px-4 py-2 rounded-lg font-bold">Apply</a>
+                </div>
+            `).join('');
+        }).catch(() => document.getElementById('list').innerHTML = "No jobs found yet. Run the bot!");
+    </script>
+</body>
+</html>
