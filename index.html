@@ -25,13 +25,12 @@
         .score { position: absolute; top: 15px; right: 15px; font-size: 0.7rem; color: var(--accent); font-weight: bold; border: 1px solid var(--accent); padding: 2px 6px; border-radius: 4px; }
         .company-name { color: var(--accent); font-weight: 600; font-size: 0.9rem; margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 1px; }
         
-        /* Experience Badge */
         .exp-badge { display: inline-block; background: #222; color: #aaa; font-size: 0.75rem; padding: 4px 10px; border-radius: 6px; border: 1px solid #444; margin-bottom: 15px; }
         
         .apply-btn { display: block; text-align: center; margin-top: 20px; background: var(--accent); color: #000; text-decoration: none; padding: 12px; border-radius: 8px; font-weight: bold; font-size: 0.9rem; transition: 0.2s; }
         .apply-btn:hover { background: #00cc6e; transform: scale(1.02); }
         
-        h1 { margin-bottom: 10px; letter-spacing: -1.5px; font-size: 2.5rem; }
+        h1 { margin-bottom: 10px; letter-spacing: -1.5px; font-size: 2.5rem; text-align: center; }
     </style>
 </head>
 <body>
@@ -54,15 +53,18 @@
         const repo = "my-data-job-agent"; 
 
         async function init() {
-            // 1. Get real update time from GitHub Commit History
+            // 1. Get real update time from the LATEST repo commit (Heartbeat)
             try {
-                const res = await fetch(`https://api.github.com/repos/${username}/${repo}/commits?path=jobs.json&per_page=1`);
+                const res = await fetch(`https://api.github.com/repos/${username}/${repo}/commits?per_page=1`);
                 const commits = await res.json();
                 if(commits[0]) {
                     const d = new Date(commits[0].commit.committer.date);
                     document.getElementById('update-time').innerText = "Last Hunt: " + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
                 }
-            } catch(e) { console.error("Update time fetch failed"); }
+            } catch(e) { 
+                console.error("Update time fetch failed"); 
+                document.getElementById('update-time').innerText = "Last Hunt: Offline";
+            }
 
             // 2. Load Jobs from JSON (with Cache Busting)
             try {
@@ -72,8 +74,12 @@
                 document.getElementById('job-count').innerText = `${jobs.length} Jobs Found`;
                 const list = document.getElementById('job-list');
                 
-                if(!jobs.length) {
-                    list.innerHTML = "<div style='grid-column: 1/-1; text-align: center; color: #666; margin-top: 50px;'><p>No 5-8yr matches found in the last hunt.<br>Try a <b>Force Hunt</b> to trigger a fresh search.</p></div>";
+                if(!jobs || jobs.length === 0) {
+                    list.innerHTML = `
+                        <div style='grid-column: 1/-1; text-align: center; color: #666; margin-top: 50px;'>
+                            <p>No new 5-8yr matches found in the most recent scan.<br>
+                            The bot is active and checking every hour.</p>
+                        </div>`;
                     return;
                 }
                 
@@ -87,7 +93,7 @@
                     </div>
                 `).join('');
             } catch(e) { 
-                document.getElementById('job-list').innerHTML = "Ready for the first hunt! Go to Actions and click 'Run Workflow'."; 
+                document.getElementById('job-list').innerHTML = "Initializing agent... Please run the GitHub Action to generate results."; 
             }
         }
         init();
