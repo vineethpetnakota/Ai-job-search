@@ -1,29 +1,27 @@
-name: Data Job Hunter
+name: Senior Data Job Bot
 
 on:
   schedule:
-    # Runs at 17 minutes past every hour to avoid GitHub's peak traffic
     - cron: '17 * * * *'
-  workflow_dispatch: # Allows you to run it manually anytime
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Crucial: Allows the bot to save jobs.json
+      contents: write
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/checkout@v4
+        uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
       - name: Install Dependencies
-        run: |
-          pip install google-genai requests
+        run: pip install google-genai requests
 
       - name: Run Job Agent
         env:
@@ -35,6 +33,11 @@ jobs:
         run: |
           git config --global user.name "GitHub Action Bot"
           git config --global user.email "actions@github.com"
-          git add jobs.json
-          # Only commit if there are changes to avoid errors
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Update jobs: $(date)" && git push)
+          
+          # Force a timestamp update so Vercel sees activity
+          echo "Last successful hunt: $(date)" > heartbeat.txt
+          
+          git add jobs.json heartbeat.txt
+          # Commit will now always happen because heartbeat.txt changed
+          git commit -m "Hourly Hunt Sync: $(date)" || echo "No changes"
+          git push
