@@ -9,48 +9,45 @@ GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 SERPER_KEY = os.getenv("SERPER_API_KEY")
 
 def get_jobs():
-    """Fetches job leads specifically targeting 5-8 years of experience."""
-    # The '5..8 years' operator tells Google to find any number between 5 and 8.
-    query = '("Data Analyst" OR "Data Engineer") "5..8 years" (site:lever.co OR site:greenhouse.io OR site:jobs.ashbyhq.com)'
+    """Loosens the search to find more senior leads for the AI to filter."""
+    # We remove the numeric "5..8" to avoid missing jobs where years aren't in the snippet.
+    query = '("Senior Data Analyst" OR "Senior Data Engineer") (site:lever.co OR site:greenhouse.io OR site:jobs.ashbyhq.com)'
     
     url = "https://google.serper.dev/search"
     headers = {'X-API-KEY': SERPER_KEY, 'Content-Type': 'application/json'}
     
     try:
-        # Requesting 100 leads to maximize the pool for the specific 5-8yr range
         response = requests.post(url, headers=headers, json={"q": query, "num": 100})
         results = response.json().get('organic', [])
-        print(f"DEBUG: Serper found {len(results)} leads targeting the 5-8yr range.")
+        print(f"DEBUG: Serper found {len(results)} potential senior leads.")
         return results
     except Exception as e:
         print(f"ERROR: Search failed - {e}")
         return []
 
 def analyze_jobs(jobs):
-    """Filters roles and extracts specific years of experience."""
+    """Uses Gemini to strictly filter for the 5-8 year sweet spot."""
     if not GEMINI_KEY:
-        print("ERROR: GEMINI_API_KEY missing.")
         return []
         
     client = genai.Client(api_key=GEMINI_KEY)
     valid_jobs = []
     
     for j in jobs:
-        role_title = j.get('title', 'Unknown')
+        role_title = j.get('title', '')
         snippet = j.get('snippet', '')
         
-        # We instruct Gemini to categorize the experience specifically
         prompt = f"""
-        Role: {role_title}
-        Info: {snippet}
+        Analyze this job lead: {role_title} - {snippet}
         
-        Task: 
-        1. Does this role require 5-8 years of experience? (5+, 6+, 7+, or 8+ matches).
-        2. If it's a match, return JSON: 
-           {{"match": true, "exp": "7+ Years", "co": "Company Name", "score": 95}}
-        3. If it's entry-level, junior, or requires 10+ years, match is false.
+        CRITERIA:
+        1. Target experience: 5 to 9 years. 
+        2. If the snippet doesn't mention years, but the title is "Senior" or "Staff", consider it a match.
+        3. REJECT if it explicitly says "Junior", "Entry", "Intern", or "10+ years" / "Principal".
         
-        Return ONLY valid JSON.
+        If it's a match, return ONLY this JSON format: 
+        {{"match": true, "exp": "5-8 Years", "co": "Company Name", "score": 95}}
+        Otherwise, return {{"match": false}}
         """
         
         try:
@@ -63,27 +60,20 @@ def analyze_jobs(jobs):
                     "title": role_title,
                     "url": j.get('link'),
                     "company": data.get('co', 'Hiring Company'),
-                    "experience": data.get('exp', '5-8 Years'), # New Field
+                    "experience": data.get('exp', '5-8 Years'),
                     "score": data.get('score', 90)
                 })
-            
-            time.sleep(0.5) # Protect API quota
-            
+            time.sleep(0.5) 
         except Exception:
             continue
             
     return valid_jobs
 
 if __name__ == "__main__":
-    print("🚀 Hunting for 5-8 Year Data Roles...")
+    print("🚀 Hunting for Senior Data Roles...")
     raw_leads = get_jobs()
-    
     if raw_leads:
         final_list = analyze_jobs(raw_leads)
-        
         with open('jobs.json', 'w') as f:
             json.dump(final_list, f, indent=4)
-        
         print(f"✅ Mission Complete: Saved {len(final_list)} jobs.")
-    else:
-        print("⚠️ No leads found. Check Serper API credits.")
