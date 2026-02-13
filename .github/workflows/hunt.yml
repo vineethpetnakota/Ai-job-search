@@ -34,10 +34,9 @@ jobs:
           git config --global user.name "GitHub Action Bot"
           git config --global user.email "actions@github.com"
           
-          # Force a timestamp update so Vercel sees activity
-          echo "Last successful hunt: $(date)" > heartbeat.txt
+          # This ensures the dashboard always shows the latest hunt time
+          echo "Last hunt: $(date)" > heartbeat.txt
           
           git add jobs.json heartbeat.txt
-          # Commit will now always happen because heartbeat.txt changed
           git commit -m "Hourly Hunt Sync: $(date)" || echo "No changes"
           git push
